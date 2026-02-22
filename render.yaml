@@ -40,7 +40,7 @@ services:
   - type: worker
     name: insightflow-worker
     runtime: docker
-    plan: free
+    plan: starter
     dockerfilePath: ./backend/Dockerfile.worker
     dockerContext: ./backend
     envVars:
@@ -70,11 +70,10 @@ services:
       - key: SECRET_KEY
         generateValue: true
 
-  # React Frontend (static site)
+  # React Frontend (static site — no plan field needed)
   - type: web
     name: insightflow-frontend
     runtime: static
-    plan: starter
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: ./frontend/dist
     headers:
@@ -94,7 +93,7 @@ services:
     name: insightflow-redis
     plan: free
     maxmemoryPolicy: allkeys-lru
-    ipAllowList: []  # Allow all connections from Render's internal network
+    ipAllowList: []
 
 databases:
   - name: insightflow-db
