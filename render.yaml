@@ -94,6 +94,7 @@ services:
     name: insightflow-redis
     plan: free
     maxmemoryPolicy: allkeys-lru
+    ipAllowList: []  # Allow all connections from Render's internal network
 
 databases:
   - name: insightflow-db
