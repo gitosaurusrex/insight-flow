@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: insightflow
+          POSTGRES_PASSWORD: insightflow
+          POSTGRES_DB: insightflow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          pip install ruff aiosqlite
+
+      - name: Lint
+        run: |
+          cd backend
+          ruff check app/
+
+      - name: Run tests
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_USER: insightflow
+          POSTGRES_PASSWORD: insightflow
+          POSTGRES_DB: insightflow
+          MONGO_HOST: localhost
+          REDIS_HOST: localhost
+          SECRET_KEY: test-secret
+          CELERY_BROKER_URL: redis://localhost:6379/1
+          CELERY_RESULT_BACKEND: redis://localhost:6379/2
+        run: |
+          cd backend
+          pytest app/tests/ -v --cov=app --cov-report=term-missing
+
+  build-images:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build -t insightflow-api ./backend
+
+      - name: Build Worker image
+        run: docker build -t insightflow-worker -f ./backend/Dockerfile.worker ./backend
+
+      - name: Build Frontend image
+        run: docker build -t insightflow-frontend ./frontend
